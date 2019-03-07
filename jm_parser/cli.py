@@ -9,7 +9,8 @@ from . import scraping
 
 DEFAULT_UC_BASE_URL = 'http://updates.jenkins-ci.org'
 PLUGIN_BASE_URL = 'https://plugins.jenkins.io/'
-_ignore_cache_decorator = click.option('--ignore-cache', '-i', default=False, is_flag=True)
+_ignore_cache_decorator = click.option(
+    '--ignore-cache', '-i', default=False, is_flag=True)
 
 
 def _uc_url_cb(ctx, param, value):
@@ -44,7 +45,8 @@ def jm_cli_entry():
 @click.argument('plugin_name')
 def depsolve(plugin_name, uc_url, uc_version, ignore_cache):
     """Given a plugin, recursively trace and print its dependencies based on upstream UC data"""
-    uc_data = parsing.get_uc_data(uc_url, allow_prompt=True, ignore_cache=ignore_cache)
+    uc_data = parsing.get_uc_data(
+        uc_url, allow_prompt=True, ignore_cache=ignore_cache)
     available_plugins = parsing.get_available_plugins(uc_data)
     dependencies = parsing.depsolve(plugin_name, available_plugins)
     # print queried plugin first
@@ -89,6 +91,25 @@ def latest_xyz_version():
     click.echo(xyz_version)
 
 
+def update_plugin(plugin_lists_dir, available_plugins, dry_run,
+                  test, remove_missing, plugin):
+    missing_plugins = parsing.update_plugin_lists(plugin_lists_dir, available_plugins, dry_run,
+                                                  test, remove_missing, plugin)
+    if any(missing_plugins.values()):
+        if remove_missing:
+            print(
+                'Some plugins are no longer available upstream and have been removed.')
+        else:
+            print('Some plugins are no longer available upstream.')
+        for plugin_list_file in sorted(missing_plugins):
+            plugin_list = missing_plugins[plugin_list_file]
+            if plugin_list:
+                print('Plugins no longer available listed in {}'.format(
+                    plugin_list_file))
+                for plugin_name in sorted(plugin_list):
+                    print(' - {}'.format(plugin_name))
+
+
 @jm_cli_entry.command(name="update-plugin-lists")
 @_jenkins_uc_options
 @click.argument('plugin_lists_dir')
@@ -101,21 +122,26 @@ def latest_xyz_version():
 def update_plugin_lists(plugin_lists_dir, dry_run, test, plugin, remove_missing,
                         uc_url, uc_version, ignore_cache):
     """Update a plugin or plugins in a plugin lists dir from a Jenkins update center"""
-    uc_data = parsing.get_uc_data(uc_url, allow_prompt=True, ignore_cache=ignore_cache)
+    uc_data = parsing.get_uc_data(
+        uc_url, allow_prompt=True, ignore_cache=ignore_cache)
     available_plugins = parsing.get_available_plugins(uc_data)
-    missing_plugins = parsing.update_plugin_lists(plugin_lists_dir, available_plugins, dry_run,
-                                                  test, remove_missing, plugin)
-    if any(missing_plugins.values()):
-        if remove_missing:
-            print('Some plugins are no longer available upstream and have been removed.')
-        else:
-            print('Some plugins are no longer available upstream.')
-        for plugin_list_file in sorted(missing_plugins):
-            plugin_list = missing_plugins[plugin_list_file]
-            if plugin_list:
-                print('Plugins no longer available listed in {}'.format(plugin_list_file))
-                for plugin_name in sorted(plugin_list):
-                    print(' - {}'.format(plugin_name))
+
+    if plugin is not None:
+        dependencies = parsing.depsolve(plugin, available_plugins)
+    else:
+        dependencies = None
+
+    if dependencies is not None:
+        print("Updating {} to {}.".format(
+            dependencies[0].name, dependencies[0].version))
+        print("========== Updating dependencies ==========")
+        for dep in sorted(dependencies, key=lambda dep: dep.name):
+            update_plugin(plugin_lists_dir, available_plugins, dry_run,
+                          test, remove_missing, dep.name)
+            print('{}=={}'.format(dep.name, dep.version))
+    else:
+        update_plugin(plugin_lists_dir, available_plugins, dry_run,
+                      test, remove_missing, plugin)
 
 
 @jm_cli_entry.command(name="compile-distribution")
@@ -152,7 +178,8 @@ def compile_distribution(plugin_lists_dir, dist_dir, xy_version):
         xy_plugin_lists_dir = os.path.join(plugin_lists_dir, xy_version)
         xy_plugin_lists_glob = os.path.join(xy_plugin_lists_dir, '*.txt')
         if not os.path.exists(xy_plugin_lists_dir):
-            raise RuntimeError('Unable to find {} dir in {}'.format(xy_version, plugin_lists_dir))
+            raise RuntimeError('Unable to find {} dir in {}'.format(
+                xy_version, plugin_lists_dir))
         # ensure output dirs for plugins, rpm, and war exist in dist dir
         for subdir in ('plugins', 'rpm', 'war'):
             dist_subdir = os.path.join(dist_dir, subdir)
