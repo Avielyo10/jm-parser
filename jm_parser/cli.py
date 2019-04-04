@@ -135,7 +135,7 @@ def update_plugin_lists(plugin_lists_dir, dry_run, test, plugin, remove_missing,
         print("Updating {} to {}.".format(
             dependencies[0].name, dependencies[0].version))
         print("==================== Updating dependencies ====================")
-        for dep in sorted(dependencies[1:], key=lambda dep: dep.name):
+        for dep in sorted(dependencies, key=lambda dep: dep.name):
             update_plugin(plugin_lists_dir, available_plugins, dry_run,
                           test, remove_missing, dep.name)
             print('{}=={}'.format(dep.name, dep.version))
